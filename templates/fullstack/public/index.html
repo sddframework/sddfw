@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A local SDDFW demonstration of acceptance criteria, real API calls and persistent favorites.">
+    <title>Favorites · SDDFW demo</title>
+    <link rel="stylesheet" href="/style.css">
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#catalog-heading">Skip to the catalog</a>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="SDDFW favorites demo home">SDDFW<span> / real evidence</span></a>
+      <span class="badge">Local full-stack demo</span>
+    </header>
+    <main>
+      <section class="intro" aria-labelledby="page-heading">
+        <p class="eyebrow">From intent to a working change</p>
+        <h1 id="page-heading">A little list.<br>A real backend.</h1>
+        <p class="lede">Save something you like. Reload. Switch identities. Every change travels through the HTTP API and is stored locally.</p>
+      </section>
+      <div class="identity-panel">
+        <div>
+          <label for="identity">Demo identity</label>
+          <select id="identity">
+            <option value="alice">Alice</option>
+            <option value="bob">Bob</option>
+          </select>
+        </div>
+        <p id="identity-note">These identities simulate separate data. They are not accounts or authentication.</p>
+      </div>
+      <p id="status" class="status" role="status" aria-live="polite">Loading the local catalog…</p>
+      <div class="content-grid">
+        <section aria-labelledby="catalog-heading">
+          <h2 id="catalog-heading" tabindex="-1">On the menu</h2>
+          <ul id="catalog" class="catalog" aria-label="Available items"></ul>
+        </section>
+        <section class="favorites-panel" aria-labelledby="favorites-heading">
+          <p class="eyebrow">Saved in the backend</p>
+          <h2 id="favorites-heading">Alice's favorites</h2>
+          <ul id="favorites" class="favorites" aria-label="Saved favorites"></ul>
+          <p id="empty-favorites">No favorites yet. Add something from the menu.</p>
+        </section>
+      </div>
+      <aside class="evidence-note" aria-label="About this demo">
+        <strong>What this demonstrates</strong>
+        <p>Persistent favorites, idempotent additions and separate data for two simulated identities. Playwright checks the interface and the real local API. No external services are mocked.</p>
+      </aside>
+      <noscript><p class="error">JavaScript is required to use this local demo. The API is still available to the automated API tests.</p></noscript>
+    </main>
+    <footer>SDDFW · Build with intent. Ship with evidence.</footer>
+  </body>
+</html>

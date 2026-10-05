@@ -1,0 +1,5 @@
+node_modules/
+.sddfw-demo/
+test-results/
+playwright-report/
+.sddfw/runs/

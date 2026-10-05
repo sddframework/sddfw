@@ -28,7 +28,9 @@ permissions needed for that role.
 
 ## Current stage
 
-The framework is in early development. The landing page contains an illustrative
-acceptance report, not an installable framework or evidence of a real test run.
-Ideas and proposed features remain proposals until the project implements and
-verifies them.
+The framework is in early development. The v0.1 preview provides a local CLI,
+coding-agent workflow, Playwright acceptance reports, and a runnable fullstack
+example. It is installed from source; there is no npm registry release yet.
+The landing's interactive report remains an illustrative sample, separate from
+the executable example. Ideas and proposed adapters remain proposals until the
+project implements and verifies them.

@@ -1,0 +1,43 @@
+:root { color-scheme: light; font-family: system-ui, sans-serif; color: #242328; background: #fffaf8; --red: #bb2634; --line: #e8dedb; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: inherit; }
+.skip-link { position: fixed; top: .5rem; left: .5rem; transform: translateY(-200%); background: white; padding: .8rem; z-index: 10; }
+.skip-link:focus { transform: translateY(0); }
+.site-header, main, footer { max-width: 1080px; margin: 0 auto; padding: 1.5rem; }
+.site-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--line); }
+.brand { font-weight: 850; text-decoration: none; letter-spacing: -.05em; }
+.brand span { font-weight: 450; color: #655d60; font-size: .8rem; letter-spacing: 0; }
+.badge { background: #f9e7e8; color: #8b1d2a; border-radius: 100px; padding: .4rem .65rem; font-size: .75rem; font-weight: 600; }
+.intro { padding: 2.5rem 0 2rem; max-width: 710px; }
+.eyebrow { text-transform: uppercase; letter-spacing: .13em; font-size: .72rem; font-weight: 750; color: var(--red); }
+h1 { font-size: clamp(2.4rem, 6vw, 4.3rem); line-height: 1.05; letter-spacing: -.06em; margin: 1rem 0; }
+.lede { font-size: 1.07rem; line-height: 1.7; color: #635b5d; max-width: 630px; }
+h2 { font-size: 1.25rem; letter-spacing: -.03em; }
+.identity-panel { display: flex; align-items: center; gap: 1.5rem; border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.2rem; background: white; }
+.identity-panel label { display: block; font-size: .8rem; font-weight: 700; margin-bottom: .35rem; }
+select { font: inherit; min-width: 140px; padding: .55rem; border-radius: 6px; background: #fffaf8; border: 1px solid #b6abaa; }
+.identity-panel p { color: #655d60; font-size: .85rem; line-height: 1.5; max-width: 480px; }
+.status { font-size: .87rem; min-height: 2.6em; line-height: 1.5; color: #655d60; padding: .4rem 0; }
+.content-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 2rem; }
+ul { padding: 0; list-style: none; }
+.catalog { display: grid; gap: 1rem; }
+.menu-card { border: 1px solid var(--line); border-radius: 12px; background: white; padding: 1.1rem 1.2rem; }
+.menu-card h3 { margin: 0; font-size: 1rem; }
+.menu-card p { color: #655d60; line-height: 1.5; font-size: .88rem; }
+button { font: inherit; cursor: pointer; min-height: 44px; border-radius: 7px; padding: .55rem .9rem; font-size: .85rem; font-weight: 650; }
+.favorite-button { background: var(--red); border: 1px solid var(--red); color: white; }
+.favorite-button.saved { color: #8b1d2a; background: #fff3f4; border-color: #cf8991; }
+button:disabled, select:disabled { opacity: .7; cursor: wait; }
+:focus-visible { outline: 3px solid #7a43bb; outline-offset: 4px; }
+.favorites-panel { align-self: start; border: 1px solid var(--line); border-radius: 12px; padding: 1.2rem; background: #f5efec; }
+.favorites-panel h2 { margin-top: .7rem; }
+.favorites li { padding: .75rem 0; border-top: 1px solid #dcd0cb; font-size: .95rem; }
+#empty-favorites { color: #655d60; font-size: .9rem; line-height: 1.65; }
+.evidence-note { margin: 2.5rem 0 1rem; border-left: 3px solid var(--red); padding: .2rem 1rem; font-size: .85rem; line-height: 1.6; }
+.evidence-note p { color: #655d60; margin-bottom: 0; }
+footer { color: #655d60; font-size: .8rem; border-top: 1px solid var(--line); margin-top: 1rem; }
+.error { color: #a01a2b; }
+[hidden] { display: none !important; }
+@media (max-width: 650px) { .content-grid { grid-template-columns: 1fr; gap: 1rem; } .identity-panel { display: block; } .brand span { display: none; } .site-header, main, footer { padding: 1.1rem; } .intro { padding-top: 2rem; } }
+@media (prefers-color-scheme: dark) { :root { color-scheme: dark; color: #f3eef0; background: #17171a; --red: #f57582; --line: #3b3a40; } .brand span, .lede, .identity-panel p, .status, .menu-card p, #empty-favorites, .evidence-note p, footer { color: #bcb4b8; } .identity-panel, .menu-card { background: #212126; } select { background: #29292f; border-color: #66616a; } .favorites-panel { background: #29292f; } .favorites li { border-color: #49464d; } .favorite-button { color: #281016; } .favorite-button.saved { background: #303036; color: #ffb3bc; border-color: #84616a; } .badge { color: #ffb3bc; background: #3b252b; } .error { color: #ffa0ae; } .skip-link { background: #29292f; } }
