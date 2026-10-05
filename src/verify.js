@@ -7,16 +7,18 @@ import { sourceSnapshot, snapshotHash, gitContext } from './provenance.js';
 import { resolvePlaywright, exists, readConfig, projectPath } from './project.js';
 import { execute } from './process.js';
 import { evaluateAcceptance, writeAcceptanceReports } from './evidence.js';
+import { captureWorkflowControls, assertWorkflowControls } from './controls.js';
 
-export async function verify(root, slug, config, { quiet = false } = {}) {
+export async function verify(root, slug, config, { quiet = false, expectedControls } = {}) {
+  const acceptedControls = expectedControls ? await assertWorkflowControls(root, slug, config, expectedControls) : await captureWorkflowControls(root, slug, config);
   const spec = await readSpec(root, slug, { approved: true });
+  if (specHash(spec) !== acceptedControls.specHash) throw new Error('Accepted specification changed while preparing verification. Restart against a stable revision.');
   const id = `${Date.now()}-${randomUUID().slice(0, 8)}`;
   const outputDir = path.join(root, '.sddfw', 'runs', id);
   await mkdir(outputDir, { recursive: true });
-  const configHash = snapshotHash({ config: await readFile(path.join(root, '.sddfw/config.json'), 'utf8') });
   const snapshotOptions = { protectedPaths: [config.testDir, config.playwrightConfig] };
   const sources = await sourceSnapshot(root, snapshotOptions);
-  const run = { id, startedAt: new Date().toISOString(), ...gitContext(root), specHash: specHash(spec), sourceHash: snapshotHash(sources), configHash, environment: config.environment, mockedServices: config.mockedServices, acceptanceProjects: config.acceptanceProjects, command: [], nodeVersion: process.version, playwrightVersion: null, outputDir, projectRoot: root };
+  const run = { id, startedAt: new Date().toISOString(), ...gitContext(root), ...acceptedControls, sourceHash: snapshotHash(sources), environment: config.environment, mockedServices: config.mockedServices, acceptanceProjects: config.acceptanceProjects, command: [], nodeVersion: process.version, playwrightVersion: null, outputDir, projectRoot: root };
   let raw = { schemaVersion: 1, projects: [], tests: [], errors: [], status: 'interrupted' }, runnerExitCode = 1;
   try {
     const playwright = resolvePlaywright(root);
@@ -45,8 +47,9 @@ export async function verify(root, slug, config, { quiet = false } = {}) {
     run.sourceHash = snapshotHash(raw.sourceFiles);
   } catch (error) { raw.errors.push({ message: error.message }); }
   run.finishedAt = new Date().toISOString();
-  const currentSpec = await readSpec(root, slug, { approved: true });
-  if (snapshotHash(await sourceSnapshot(root, { protectedPaths: run.sourcePaths ?? snapshotOptions.protectedPaths })) !== run.sourceHash || specHash(currentSpec) !== run.specHash || snapshotHash({ config: await readFile(path.join(root, '.sddfw/config.json'), 'utf8') }) !== configHash) raw.errors.push({ message: 'Source/spec/config changed during verification; rerun against a stable revision.' });
+  if (snapshotHash(await sourceSnapshot(root, { protectedPaths: run.sourcePaths ?? snapshotOptions.protectedPaths })) !== run.sourceHash) raw.errors.push({ message: 'Source changed during verification; rerun against a stable revision.' });
+  try { await assertWorkflowControls(root, slug, config, acceptedControls); }
+  catch (error) { raw.errors.push({ message: error.message }); }
   const report = evaluateAcceptance({ spec, playwrightReport: raw, run, runnerExitCode });
   await writeAcceptanceReports(report, outputDir);
   await writeJSON(changePaths(root, slug).state, { schemaVersion: 1, lastRun: id, status: report.status, specHash: run.specHash });
@@ -65,6 +68,7 @@ export async function latestReport(root, slug) {
   const report = JSON.parse(await readFile(path.join(dir, 'acceptance.json'), 'utf8'));
   const recordedPaths = report.run.sourcePaths ?? [config.testDir, config.playwrightConfig];
   for (const file of recordedPaths) await projectPath(root, file);
-  const fresh = report.run.specHash === specHash(spec) && report.run.sourceHash === snapshotHash(await sourceSnapshot(root, { protectedPaths: recordedPaths })) && report.run.configHash === snapshotHash({ config: await readFile(path.join(root, '.sddfw/config.json'), 'utf8') });
+  const currentControls = await captureWorkflowControls(root, slug, config);
+  const fresh = report.run.specHash === specHash(spec) && report.run.sourceHash === snapshotHash(await sourceSnapshot(root, { protectedPaths: recordedPaths })) && ['specHash', 'configHash', 'approvalHash'].every(key => report.run[key] === currentControls[key]);
   return { report, dir, fresh };
 }

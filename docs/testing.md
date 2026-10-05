@@ -15,6 +15,7 @@ test('a saved favorite survives reload', {
 }, async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Add Sourdough toast to favorites' }).click();
+  await expect(page.getByRole('status')).toContainText('Saved in the backend.');
   await page.reload();
   await expect(page.getByRole('list', { name: 'Saved favorites' }))
     .toHaveText('Sourdough toast');
@@ -100,8 +101,9 @@ Each run writes local artifacts under `.sddfw/runs/<run-id>/`:
 - Playwright attachments and traces when produced by the configured tests.
 
 Run context includes timestamps, commit, uncommitted source state, specification
-hash, environment, mocked services, command, Node.js and Playwright versions. A source or
-specification change after execution can make the report stale. `sddfw report`
+hash, approval and configuration hashes, environment, mocked services, command,
+Node.js and Playwright versions. A source, specification, approval or configuration
+change after execution can make the report stale. `sddfw report`
 checks freshness; run `verify` again to collect current evidence.
 
 The source snapshot excludes standard generated output directories (`dist`,
@@ -149,6 +151,12 @@ review. Check observable outcomes, meaningful boundaries, fixture isolation, and
 whether assertions would catch a broken implementation. Prefer Playwright's
 retrying assertions for browser state; see the official
 [assertions guide](https://playwright.dev/docs/test-assertions).
+
+An automated run binds the specification, explicit approval and SDDFW
+configuration before test preparation. Those same hashes must hold throughout
+the baseline and both implementation attempts. A concurrent edit or new approval
+stops the run; review it and start a new run. Prepared acceptance tests and
+Playwright configuration remain frozen during implementation.
 
 A useful manual experiment is to deliberately break duplicate prevention in a
 local throwaway copy, verify that `FAV-003` fails, restore the implementation,

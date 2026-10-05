@@ -6,6 +6,8 @@ import { initialize, readConfig, resolvePlaywright, exists } from '../src/projec
 import { changePaths, writeJSON, readSpec, approveSpec } from '../src/spec.js';
 import { chooseAgent, availableAgents, draftWithAgent, createPlan, runAgentPhase } from '../src/agents.js';
 import { verify, latestReport } from '../src/verify.js';
+import { captureWorkflowControls } from '../src/controls.js';
+import { specHash } from '../src/spec.js';
 
 const help = `SDDFW 0.1 — Build with intent. Ship with evidence.
 
@@ -73,22 +75,24 @@ async function main() {
     process.exitCode = fresh && report.status === 'passed' ? 0 : 1; return;
   }
   if (command === 'run') {
-    const { planFile } = await createPlan(root, slug, config);
+    const { planFile, spec } = await createPlan(root, slug, config);
     const agent = chooseAgent(values.agent);
     if (agent === 'manual') { console.log(`Task instructions: ${planFile}\nUse them with your coding agent; then: sddfw verify ${slug}\nNo implementation was executed.`); return; }
     resolvePlaywright(root);
-    console.log('1/4 Preparing acceptance tests…'); await runAgentPhase(root, slug, config, agent, 'tests');
+    const workflowControls = await captureWorkflowControls(root, slug, config);
+    if (workflowControls.specHash !== specHash(spec)) throw new Error('Accepted specification changed while planning. Review the preserved changes and restart the workflow.');
+    console.log('1/4 Preparing acceptance tests…'); await runAgentPhase(root, slug, config, agent, 'tests', { workflowControls });
     console.log('2/4 Checking prepared tests against the current product…');
-    const baseline = await verify(root, slug, config);
+    const baseline = await verify(root, slug, config, { expectedControls: workflowControls });
     if (baseline.criteria.some(c => ['blocked', 'unverified', 'flaky'].includes(c.status)) || baseline.summary.issues.length) throw new Error(`Prepared tests have missing, blocked or unstable evidence; inspect the report before implementation. Correct coverage/environment or review unstable tests, then run again.`);
     const frozenPaths = baseline.run.sourcePaths;
     const frozenFiles = Object.fromEntries(Object.entries(baseline.run.sourceFiles).filter(([file]) => frozenPaths.some(target => file === target || file.startsWith(`${target}/`))));
     let report = baseline;
     for (let attempt = 1; attempt <= 2; attempt++) {
       console.log(`3/4 Implementing against the accepted spec and frozen tests (attempt ${attempt}/2)…`);
-      await runAgentPhase(root, slug, config, agent, 'implement', { attempt, lastReport: report.status === 'failed' ? report : undefined, frozenPaths, frozenFiles });
+      await runAgentPhase(root, slug, config, agent, 'implement', { attempt, lastReport: report.status === 'failed' ? report : undefined, frozenPaths, frozenFiles, workflowControls });
       console.log('4/4 Verifying the change…');
-      report = await verify(root, slug, config);
+      report = await verify(root, slug, config, { expectedControls: workflowControls });
       if (report.status !== 'failed' || report.criteria.some(c => ['blocked', 'unverified', 'flaky'].includes(c.status)) || report.summary.issues.length) break;
     }
     process.exitCode = report.status === 'passed' ? 0 : 1; return;

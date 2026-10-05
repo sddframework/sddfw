@@ -4,6 +4,7 @@ import path from 'node:path';
 import { execute, resolveInvocation } from './process.js';
 import { changePaths, readSpec, specHash } from './spec.js';
 import { sourceSnapshot, controlSnapshot, changedFiles } from './provenance.js';
+import { captureWorkflowControls, assertWorkflowControls } from './controls.js';
 
 export function availableAgents() {
   return ['codex', 'claude'].filter(name => {
@@ -68,12 +69,14 @@ export function assertFrozenTests(snapshot, expected, testPaths) {
   return current;
 }
 
-export async function runAgentPhase(root, slug, config, agent, phase, { attempt = 1, lastReport, frozenPaths = [], frozenFiles } = {}) {
+export async function runAgentPhase(root, slug, config, agent, phase, { attempt = 1, lastReport, frozenPaths = [], frozenFiles, workflowControls } = {}) {
   const spec = await readSpec(root, slug, { approved: true });
   const testPaths = [...new Set([config.testDir, config.playwrightConfig, ...frozenPaths])];
   const snapshotOptions = { protectedPaths: testPaths };
   const before = await sourceSnapshot(root, snapshotOptions);
   if (phase === 'implement') assertFrozenTests(before, frozenFiles, testPaths);
+  const acceptedControls = workflowControls ?? (phase === 'tests' ? await captureWorkflowControls(root, slug, config) : undefined);
+  await assertWorkflowControls(root, slug, config, acceptedControls);
   const controlsBefore = await controlSnapshot(root);
   const configBefore = await readFile(path.join(root, '.sddfw/config.json'), 'utf8');
   const approvalBefore = await readFile(changePaths(root, slug).approval, 'utf8');
@@ -86,6 +89,7 @@ export async function runAgentPhase(root, slug, config, agent, phase, { attempt 
   violations.push(...changedFiles(controlsBefore, await controlSnapshot(root)));
   if (specHash(await readSpec(root, slug, { approved: true })) !== specHash(spec) || configBefore !== await readFile(path.join(root, '.sddfw/config.json'), 'utf8') || approvalBefore !== await readFile(changePaths(root, slug).approval, 'utf8')) violations.push('accepted specification/config/approval');
   if (violations.length) throw new Error(`Agent phase changed protected files: ${violations.join(', ')}. Edits are preserved for review; acceptance is stopped.`);
+  await assertWorkflowControls(root, slug, config, acceptedControls);
   if (phase === 'implement') assertFrozenTests(after, frozenFiles, testPaths);
   await writeFile(path.join(changePaths(root, slug).dir, `${phase}-changes.json`), `${JSON.stringify({ specHash: specHash(spec), phase, attempt, changedFiles: changes, before, after, recordedAt: new Date().toISOString() }, null, 2)}\n`);
   return changes;
