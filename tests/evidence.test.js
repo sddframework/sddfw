@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, writeFile, symlink, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, symlink, rm, realpath } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -8,6 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { evaluateAcceptance, writeAcceptanceReports } from '../src/evidence.js';
 import Reporter from '../src/reporter.js';
+import { sourceSnapshot, snapshotHash } from '../src/provenance.js';
 
 const spec = { title: 'Favorites', criteria: [{ id: 'FAV-001', description: 'A favorite survives reload.' }] };
 const attempt = (status = 'passed', retry = 0, errors = []) => ({ status, retry, errors, attachments: [], assertionSteps: 1 });
@@ -131,11 +132,16 @@ test('reporter preserves suite discoveries, runtime annotations, assertion count
   const directory = await mkdtemp(path.join(os.tmpdir(), 'sddfw-reporter-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const project = { name: 'chromium' };
+  await writeFile(path.join(directory, 'test.js'), 'test source');
   const testCase = { id: 'one', title: 'Tagged @sddfw:FAV-001', titlePath: () => ['', 'chromium', 'Tagged @sddfw:FAV-001'], tags: [], parent: { project: () => project }, location: { file: path.join(directory, 'test.js'), line: 5 }, expectedStatus: 'passed', retries: 0, outcome: () => 'expected', results: [{ ...attempt(), duration: 2, startTime: new Date('2026-01-01T00:00:00Z'), steps: [{ category: 'test.step', steps: [{ category: 'expect', steps: [] }] }], attachments: [{ name: 'detail', contentType: 'text/plain', body: Buffer.from('local evidence') }] }] };
   const omitted = { ...testCase, id: 'two', results: [] };
   const suite = { title: 'chromium', type: 'project', project: () => project, tests: [testCase, omitted], suites: [] };
   const reporter = new Reporter({ outputFile: path.join(directory, 'playwright.json') });
-  reporter.onBegin({ rootDir: directory, projects: [project] }, { suites: [suite], allTests: () => [testCase, omitted] });
+  const config = { rootDir: directory, projects: [project] };
+  const rootSuite = { suites: [suite], allTests: () => [testCase, omitted] };
+  assert.equal(reporter.onBegin(config, rootSuite), undefined);
+  assert.ok(reporter.sourceFiles['test.js']);
+  await reporter.onBegin(config, rootSuite);
   testCase.expectedStatus = 'failed';
   reporter.onTestEnd(testCase);
   reporter.onError({ message: 'global failure' });
@@ -149,6 +155,7 @@ test('reporter preserves suite discoveries, runtime annotations, assertion count
   assert.equal(report.errors.length, 1);
   assert.equal(await readFile(report.tests[0].results[0].attachments[0].path, 'utf8'), 'local evidence');
   assert.equal(report.suites[0].tests.length, 2);
+  assert.ok(report.sourceFiles['test.js']);
 });
 
 test('real Playwright reporter distinguishes pass, skip, expected failure, flaky and missing tag', async t => {
@@ -217,4 +224,49 @@ test('passes @sddfw:FAV-001', () => expect(1).toBe(1));
   assert.match(acceptance.criteria[0].reason, /firefox/);
   // Deliberately choosing chromium still verifies the explicitly scoped run.
   assert.equal(evaluate(report, { runnerExitCode: runner.status, run: { acceptanceProjects: ['chromium'] } }).status, 'passed');
+});
+
+test('real Playwright captures all project test directories before execution, including excluded output directories', async t => {
+  const require = createRequire(import.meta.url);
+  let playwrightRoot;
+  try { playwrightRoot = path.dirname(require.resolve('@playwright/test/package.json')); }
+  catch { t.skip('Install development dependencies to run the real Playwright reporter check.'); return; }
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'sddfw-project-sources-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const reporterPath = fileURLToPath(new URL('../src/reporter.js', import.meta.url));
+  await mkdir(path.join(directory, 'tests'));
+  await mkdir(path.join(directory, 'dist', 'mobile-tests'), { recursive: true });
+  await writeFile(path.join(directory, 'playwright.config.mjs'), `export default {
+    workers: 1, reporter: [[${JSON.stringify(reporterPath)}]],
+    projects: [
+      {name:'desktop', testDir:'./tests'},
+      {name:'mobile', testDir:'./dist/mobile-tests'}
+    ]
+  };\n`);
+  const testSource = `const { test, expect } = require(${JSON.stringify(playwrightRoot)});
+test('passes @sddfw:FAV-001', () => expect(1).toBe(1));\n`;
+  await writeFile(path.join(directory, 'tests', 'desktop.spec.cjs'), testSource);
+  const mobileFile = path.join(directory, 'dist', 'mobile-tests', 'mobile.spec.cjs');
+  await writeFile(mobileFile, testSource);
+  const outputFile = path.join(directory, '.sddfw', 'runs', 'run', 'playwright.json');
+  const runner = spawnSync(process.execPath, [path.join(playwrightRoot, 'cli.js'), 'test', '--config', path.join(directory, 'playwright.config.mjs')], {
+    cwd: directory,
+    env: { ...process.env, SDDFW_PLAYWRIGHT_REPORT: outputFile, SDDFW_PROJECT_ROOT: directory, SDDFW_PROTECTED_PATHS: JSON.stringify(['tests', 'playwright.config.mjs']) },
+    encoding: 'utf8', timeout: 30_000,
+  });
+  assert.equal(runner.status, 0, runner.stderr || runner.stdout);
+  const report = JSON.parse(await readFile(outputFile, 'utf8'));
+  assert.deepEqual(report.errors, []);
+  assert.equal(report.projectRoot, await realpath(directory));
+  assert.deepEqual(report.projects.map(project => project.testDir), ['tests', 'dist/mobile-tests']);
+  assert.ok(report.protectedPaths.includes('dist/mobile-tests'));
+  assert.ok(report.protectedPaths.includes('dist/mobile-tests/mobile.spec.cjs'));
+  assert.ok(report.sourceFiles['tests/desktop.spec.cjs']);
+  assert.ok(report.sourceFiles['dist/mobile-tests/mobile.spec.cjs']);
+  assert.deepEqual(report.tests.map(test => test.file).sort(), ['dist/mobile-tests/mobile.spec.cjs', 'tests/desktop.spec.cjs']);
+  assert.equal(evaluate(report, { runnerExitCode: runner.status }).status, 'passed');
+  const capturedHash = snapshotHash(report.sourceFiles);
+  await writeFile(mobileFile, `${testSource}\n// changed after execution\n`);
+  const current = await sourceSnapshot(directory, { protectedPaths: report.protectedPaths });
+  assert.notEqual(snapshotHash(current), capturedHash);
 });

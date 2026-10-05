@@ -81,10 +81,12 @@ async function main() {
     console.log('2/4 Checking prepared tests against the current product…');
     const baseline = await verify(root, slug, config);
     if (baseline.criteria.some(c => ['blocked', 'unverified', 'flaky'].includes(c.status)) || baseline.summary.issues.length) throw new Error(`Prepared tests have missing, blocked or unstable evidence; inspect the report before implementation. Correct coverage/environment or review unstable tests, then run again.`);
+    const frozenPaths = baseline.run.sourcePaths;
+    const frozenFiles = Object.fromEntries(Object.entries(baseline.run.sourceFiles).filter(([file]) => frozenPaths.some(target => file === target || file.startsWith(`${target}/`))));
     let report = baseline;
     for (let attempt = 1; attempt <= 2; attempt++) {
       console.log(`3/4 Implementing against the accepted spec and frozen tests (attempt ${attempt}/2)…`);
-      await runAgentPhase(root, slug, config, agent, 'implement', { attempt, lastReport: report.status === 'failed' ? report : undefined });
+      await runAgentPhase(root, slug, config, agent, 'implement', { attempt, lastReport: report.status === 'failed' ? report : undefined, frozenPaths, frozenFiles });
       console.log('4/4 Verifying the change…');
       report = await verify(root, slug, config);
       if (report.status !== 'failed' || report.criteria.some(c => ['blocked', 'unverified', 'flaky'].includes(c.status)) || report.summary.issues.length) break;

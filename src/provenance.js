@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { readdir, readFile, stat } from 'node:fs/promises';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 
@@ -22,6 +23,27 @@ export async function sourceSnapshot(root, { protectedPaths = [] } = {}) {
     }
   }
   await walk(root);
+  return files;
+}
+// Reporter.onBegin is synchronous in Playwright 1.50+, so its source capture must
+// finish before returning to the runner. Keep the same policy as sourceSnapshot.
+export function sourceSnapshotSync(root, { protectedPaths = [] } = {}) {
+  const files = {};
+  function walk(dir, excludedParent = false) {
+    for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const full = path.join(dir, entry.name), relative = path.relative(root, full).split(path.sep).join('/');
+      const protectedPath = protectedPaths.some(target => relative === target || relative.startsWith(`${target}/`) || target.startsWith(`${relative}/`));
+      const excludedPath = excludedParent || excluded.has(entry.name) || privateName.test(entry.name);
+      if (!protectedPath && excludedPath) continue;
+      if (entry.isDirectory()) walk(full, excludedPath);
+      else if (entry.isSymbolicLink()) throw new Error(`Source snapshot does not follow symlinks: ${relative}. Move generated links outside source directories.`);
+      else if (entry.isFile()) {
+        if (statSync(full).size > 20_000_000) throw new Error(`Source file too large to record: ${relative}. Move generated artifacts to .artifacts/ or another excluded output directory.`);
+        files[relative] = createHash('sha256').update(readFileSync(full)).digest('hex');
+      }
+    }
+  }
+  walk(root);
   return files;
 }
 export function snapshotHash(files) { return createHash('sha256').update(JSON.stringify(Object.entries(files).sort(([a],[b]) => a.localeCompare(b)))).digest('hex'); }

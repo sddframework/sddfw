@@ -11,9 +11,9 @@ Playwright 1.63.0, and Chromium build 1243.
 
 | Gate | Observed result |
 | --- | --- |
-| Core, evidence, and backend tests | 32/32 passed with no skipped tests: 12 core, 14 evidence, and 6 backend. New regressions cover a missing project-matrix check, protected `dist/tests` files, and ordinary use of the word “todo.” |
+| Core, evidence, and backend tests | 35/35 passed with no skipped tests: 14 core, 15 evidence, and 6 backend. New regressions cover a missing project-matrix check, protected `dist/tests` files, and ordinary use of the word “todo,” and tests across multiple effective project directories. |
 | Packaged installation and integration | Current-source packaged integration: 1 passed, approximately 10 seconds. A tarball installed in a clean project ran real UI/API checks and detected broken code, skipped coverage, missing criteria, invalid approval, and stale evidence. |
-| Minimum runtime | The same 32 core/evidence/backend checks passed on Node.js 22 with no skips. |
+| Minimum runtime | The same 35 core/evidence/backend checks passed on Node.js 22 with no skips. |
 | Fullstack browser/API demo | 5/5 Playwright tests passed against the real local backend and persistence. |
 | Deliberate product regression | Allowing duplicate favorites made `FAV-003` fail; the original implementation was preserved. |
 | Landing | Check and build passed. Light/dark layouts had no page overflow at 360, 390, 768, and 1440 pixels. Axe reported zero automated violations; decorative contrast was reviewed manually. |

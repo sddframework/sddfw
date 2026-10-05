@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { validateSpec, specHash, writeJSON, changePaths, approveSpec, readSpec } from '../src/spec.js';
 import { initialize, readConfig, projectPath } from '../src/project.js';
 import { sourceSnapshot, controlSnapshot, snapshotHash, changedFiles } from '../src/provenance.js';
-import { createPlan, phasePrompt } from '../src/agents.js';
+import { createPlan, phasePrompt, assertFrozenTests, runAgentPhase } from '../src/agents.js';
 import { resolveInvocation } from '../src/process.js';
 
 const cli = fileURLToPath(new URL('../bin/sddfw.js', import.meta.url));
@@ -84,6 +84,43 @@ test('configured tests remain frozen and fresh even beneath generated-output dir
   assert.deepEqual(changedFiles(before, await sourceSnapshot(root, options)).sort(), ['dist/playwright.config.mjs', 'dist/tests/behavior.spec.js', 'dist/tests/new.spec.js']);
   await rm(path.join(root, 'dist/tests/behavior.spec.js'));
   assert.notEqual(snapshotHash(before), snapshotHash(await sourceSnapshot(root, options)));
+});
+test('baseline freeze protects all project test paths against edits, removals and additions', () => {
+  const testPaths = ['tests', 'dist/mobile-tests', 'playwright.config.mjs'];
+  const frozen = {
+    'tests/favorites.spec.mjs': 'desktop assertions',
+    'dist/mobile-tests/favorites.spec.mjs': 'mobile assertions',
+    'playwright.config.mjs': 'selected projects',
+  };
+  assert.deepEqual(assertFrozenTests({ ...frozen, 'src/app.js': 'changed product' }, frozen, testPaths), frozen);
+  assert.doesNotThrow(() => assertFrozenTests({ ...frozen, 'dist/mobile-tests-extra/product.js': 'product' }, frozen, testPaths));
+  for (const file of Object.keys(frozen)) {
+    assert.throws(() => assertFrozenTests({ ...frozen, [file]: 'weakened assertion or selection' }, frozen, testPaths), /Frozen acceptance tests changed/);
+    const deleted = { ...frozen }; delete deleted[file];
+    assert.throws(() => assertFrozenTests(deleted, frozen, testPaths), /Frozen acceptance tests changed/);
+  }
+  for (const file of ['tests/new.spec.mjs', 'dist/mobile-tests/new.spec.mjs']) {
+    assert.throws(() => assertFrozenTests({ ...frozen, [file]: 'new test' }, frozen, testPaths), /Frozen acceptance tests changed/);
+  }
+  assert.throws(() => assertFrozenTests(frozen, undefined, testPaths), /baseline file hashes/);
+});
+test('implementation rejects a changed secondary project test before invoking an agent', async t => {
+  const root = await temp(t);
+  await initialize(root);
+  await writeJSON(changePaths(root, 'favorites').spec, valid());
+  await approveSpec(root, 'favorites');
+  await mkdir(path.join(root, 'dist/mobile-tests'), { recursive: true });
+  const mobileTest = path.join(root, 'dist/mobile-tests/favorites.spec.mjs');
+  await writeFile(mobileTest, 'original mobile assertion');
+  const config = await readConfig(root);
+  const frozenPaths = [config.testDir, config.playwrightConfig, 'dist/mobile-tests'];
+  const baseline = await sourceSnapshot(root, { protectedPaths: frozenPaths });
+  const frozenFiles = Object.fromEntries(Object.entries(baseline).filter(([file]) => frozenPaths.some(target => file === target || file.startsWith(`${target}/`))));
+  await writeFile(mobileTest, 'weakened mobile assertion');
+  await assert.rejects(runAgentPhase(root, 'favorites', config, 'agent-must-not-run', 'implement', { frozenPaths, frozenFiles }), /Frozen acceptance tests changed: dist\/mobile-tests\/favorites\.spec\.mjs/);
+  await writeFile(mobileTest, 'original mobile assertion');
+  await writeFile(path.join(root, 'dist/mobile-tests/new.spec.mjs'), 'new mobile test');
+  await assert.rejects(runAgentPhase(root, 'favorites', config, 'agent-must-not-run', 'implement', { attempt: 2, frozenPaths, frozenFiles }), /Frozen acceptance tests changed: dist\/mobile-tests\/new\.spec\.mjs/);
 });
 test('CLI prepares a manual lifecycle without claiming agent execution', async t => {
   const root = await temp(t);

@@ -51,22 +51,42 @@ export async function createPlan(root, slug, config) {
   await writeFile(path.join(files.dir, 'plan.md'), content);
   return { spec, planFile: path.join(files.dir, 'plan.md') };
 }
-export async function runAgentPhase(root, slug, config, agent, phase, { attempt = 1, lastReport } = {}) {
+function matchesTestPath(file, testPaths) {
+  return testPaths.some(target => file === target || file.startsWith(`${target}/`));
+}
+
+export function assertFrozenTests(snapshot, expected, testPaths) {
+  if (!expected || typeof expected !== 'object' || Array.isArray(expected)) {
+    throw new Error('Frozen acceptance tests need the baseline file hashes before implementation.');
+  }
+  const coveredFiles = files => Object.fromEntries(Object.entries(files).filter(([file]) => matchesTestPath(file, testPaths)));
+  const current = coveredFiles(snapshot);
+  const changes = changedFiles(coveredFiles(expected), current);
+  if (changes.length) {
+    throw new Error(`Frozen acceptance tests changed: ${changes.join(', ')}. Edits are preserved for review; acceptance is stopped.`);
+  }
+  return current;
+}
+
+export async function runAgentPhase(root, slug, config, agent, phase, { attempt = 1, lastReport, frozenPaths = [], frozenFiles } = {}) {
   const spec = await readSpec(root, slug, { approved: true });
-  const snapshotOptions = { protectedPaths: [config.testDir, config.playwrightConfig] };
+  const testPaths = [...new Set([config.testDir, config.playwrightConfig, ...frozenPaths])];
+  const snapshotOptions = { protectedPaths: testPaths };
   const before = await sourceSnapshot(root, snapshotOptions);
+  if (phase === 'implement') assertFrozenTests(before, frozenFiles, testPaths);
   const controlsBefore = await controlSnapshot(root);
   const configBefore = await readFile(path.join(root, '.sddfw/config.json'), 'utf8');
   const approvalBefore = await readFile(changePaths(root, slug).approval, 'utf8');
-  const prompt = phasePrompt(phase, { slug, spec, config }) + (lastReport ? `\nPrevious acceptance failed. Inspect the local report ${path.join('.sddfw/runs', lastReport.run.id, 'acceptance.json')} to diagnose failures and repair product code. Preserve all accepted tests and criteria. This is implementation attempt ${attempt}; do not hide failures.\n` : '');
+  const prompt = phasePrompt(phase, { slug, spec, config }) + (phase === 'implement' ? `\nAll frozen acceptance paths discovered by Playwright: ${JSON.stringify(testPaths)}. Do not modify any of these paths.\n` : '') + (lastReport ? `\nPrevious acceptance failed. Inspect the local report ${path.join('.sddfw/runs', lastReport.run.id, 'acceptance.json')} to diagnose failures and repair product code. Preserve all accepted tests and criteria. This is implementation attempt ${attempt}; do not hide failures.\n` : '');
   await invokeAgent(agent, prompt, root, path.join(changePaths(root, slug).dir, `agent-${phase}-${Date.now()}-${attempt}.log`));
   const after = await sourceSnapshot(root, snapshotOptions);
   const changes = changedFiles(before, after);
-  const isTest = file => file === config.playwrightConfig || file === config.testDir || file.startsWith(`${config.testDir}/`);
+  const isTest = file => matchesTestPath(file, testPaths);
   const violations = changes.filter(file => phase === 'tests' ? !isTest(file) : isTest(file));
   violations.push(...changedFiles(controlsBefore, await controlSnapshot(root)));
   if (specHash(await readSpec(root, slug, { approved: true })) !== specHash(spec) || configBefore !== await readFile(path.join(root, '.sddfw/config.json'), 'utf8') || approvalBefore !== await readFile(changePaths(root, slug).approval, 'utf8')) violations.push('accepted specification/config/approval');
   if (violations.length) throw new Error(`Agent phase changed protected files: ${violations.join(', ')}. Edits are preserved for review; acceptance is stopped.`);
+  if (phase === 'implement') assertFrozenTests(after, frozenFiles, testPaths);
   await writeFile(path.join(changePaths(root, slug).dir, `${phase}-changes.json`), `${JSON.stringify({ specHash: specHash(spec), phase, attempt, changedFiles: changes, before, after, recordedAt: new Date().toISOString() }, null, 2)}\n`);
   return changes;
 }

@@ -107,7 +107,7 @@ checks freshness; run `verify` again to collect current evidence.
 The source snapshot excludes standard generated output directories (`dist`,
 `coverage`, `.next`, `.cache`, `.data`, `.artifacts`), dependency directories,
 Git metadata, SDDFW runtime evidence, and common credential-file names.
-Configured test paths and the Playwright configuration remain included even
+Configured paths, effective Playwright project test directories, discovered test files, and the Playwright configuration remain included even
 inside an excluded output directory. Arbitrary `.gitignore` rules do not extend
 these exclusions. Source symlinks and files above 20 MB stop snapshot creation;
 place generated artifacts in an excluded output directory. Source fingerprints

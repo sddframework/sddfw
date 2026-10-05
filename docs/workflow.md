@@ -70,11 +70,17 @@ prepared checks against the current application before implementation. A
 functional failure is an expected starting point for new behavior; missing,
 blocked, or flaky evidence stops the workflow until it is resolved.
 
-The implementation phase then freezes tests and the Playwright configuration.
+The implementation phase then freezes the Playwright configuration, effective project test directories, and all discovered test files using the baseline hashes. These same hashes remain fixed across both implementation attempts.
 The agent must change product code to satisfy the accepted criteria. If it
 changes protected test files, SDDFW stops and preserves the edits for review.
 If a prepared test is wrong, correct it deliberately before starting a new run;
 do not quietly relax it during implementation.
+
+Use dedicated test directories for automation. An effective test directory that
+also contains application source freezes those files too; use manual mode or
+separate the tests before asking the agent to implement there. When Playwright's
+test directory is the project root, SDDFW freezes the discovered test files
+rather than freezing the whole application.
 
 Backend behavior can be checked through Playwright's request fixture;
 frontend behavior can be checked through the browser.

@@ -57,7 +57,9 @@ of agent invocation, against manually authored code or existing tests.
 - Evidence is tied to the executed sources and environment. Changes invalidate
   its freshness rather than retroactively certifying new code.
 - Test preparation is confined to configured test paths and Playwright config.
-  Implementation cannot modify those frozen files; violations stop acceptance
+  The reporter captures effective project test paths synchronously before test
+  execution. Implementation compares these paths with the original baseline
+  hashes before and after both attempts. It cannot modify those frozen files; violations stop acceptance
   and preserve the edits for review.
 - Initialization preserves pre-existing project and agent instruction files.
   Guidance is written to `.sddfw/AGENT.md`.
