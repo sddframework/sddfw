@@ -21,7 +21,7 @@ Playwright 1.63.0, and Chromium build 1243.
 
 The landing's interactive reservation report is illustrative. The fullstack
 demo results above came from executed checks. Website verification details are
-in its [README](https://github.com/sddframework/website/blob/feat/v0.1-playwright-docs/README.md).
+in its [README](https://github.com/sddframework/website/blob/main/README.md).
 
 The integration fixture explicitly simulates Codex; it does not call an AI
 provider. Its six real Playwright executions prove baseline → failed first

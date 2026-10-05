@@ -11,10 +11,10 @@ unit coverage but no live Windows workflow validation yet. Check the
 [validation record](validation.md) for the platforms and gates actually executed.
 
 The package has not been published to
-the npm registry. These commands use the v0.1 preview branch:
+the npm registry. Install the v0.1 source preview from the repository's `main` branch:
 
 ```sh
-git clone --branch feat/v0.1-playwright https://github.com/sddframework/sddfw.git
+git clone --branch main https://github.com/sddframework/sddfw.git
 cd sddfw
 npm install
 npm link
@@ -28,9 +28,11 @@ throughout this guide. No global installation is required to use the CLI.
 
 ## Run the included application
 
-From a new, empty directory outside the framework checkout:
+After installing from the fresh clone above, leave the framework checkout and
+create a separate, empty demo directory:
 
 ```sh
+cd ..
 mkdir sddfw-demo
 cd sddfw-demo
 sddfw init --demo --install

@@ -10,8 +10,8 @@ change in an existing web application, or start with the included fullstack demo
 
 ## Status
 
-v0.1 is an early preview, installed from this repository. `@sddfw/cli` is the
-package name; it is **not published to the npm registry**. Start with local
+v0.1 is an early source preview, installed from this repository's `main` branch.
+`@sddfw/cli` is the package name; it is **not published to the npm registry**. Start with local
 development and review every generated change before using it elsewhere.
 
 ## Try the frontend + backend demo
@@ -19,7 +19,7 @@ development and review every generated change before using it elsewhere.
 Requires Node.js 22+, npm, and Git. The demo works without an AI account.
 
 ```sh
-git clone --branch feat/v0.1-playwright https://github.com/sddframework/sddfw.git
+git clone --branch main https://github.com/sddframework/sddfw.git
 cd sddfw
 npm install
 npm link
@@ -27,6 +27,7 @@ cd ..
 mkdir sddfw-demo
 cd sddfw-demo
 sddfw init --demo --install
+# Read .sddfw/changes/favorites/spec.json before approving it
 sddfw approve favorites
 sddfw verify favorites
 sddfw report favorites
