@@ -1,0 +1,9 @@
+node_modules/
+*.tgz
+.sddfw/runs/
+.sddfw/changes/*/agent-*.log
+playwright-report/
+test-results/
+.artifacts/
+templates/fullstack/.data/
+examples/**/.data/

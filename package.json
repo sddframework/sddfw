@@ -1,0 +1,23 @@
+{
+  "name": "@sddfw/cli",
+  "version": "0.1.0",
+  "description": "Spec driven changes with AI-assisted tests and Playwright acceptance evidence.",
+  "type": "module",
+  "license": "MIT",
+  "bin": { "sddfw": "bin/sddfw.js" },
+  "exports": { ".": "./src/spec.js", "./reporter": "./src/reporter.js" },
+  "files": ["bin", "src", "templates", "docs", "specs", "examples", "README.md", "GOVERNANCE.md", "LICENSE"],
+  "engines": { "node": ">=22" },
+  "repository": { "type": "git", "url": "https://github.com/sddframework/sddfw.git" },
+  "bugs": { "url": "https://github.com/sddframework/sddfw/issues" },
+  "homepage": "https://sddfw.com",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "node scripts/check.mjs",
+    "test:demo": "playwright test --config templates/fullstack/playwright.config.mjs",
+    "test:integration": "node --test tests/integration/*.test.js"
+  },
+  "devDependencies": { "@playwright/test": "1.63.0" },
+  "peerDependencies": { "@playwright/test": ">=1.50.0 <2" },
+  "peerDependenciesMeta": { "@playwright/test": { "optional": true } }
+}

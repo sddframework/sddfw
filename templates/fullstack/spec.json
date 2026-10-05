@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "title": "Favorites with a real frontend and backend",
+  "intent": "Let two simulated demo identities manage persistent favorites through an accessible web interface and a real local HTTP API.",
+  "criteria": [
+    {
+      "id": "FAV-001",
+      "description": "Adding a favorite through the interface persists it in the backend and survives reloading the page.",
+      "given": "Alice has no favorites and the local demo server is running.",
+      "when": "Alice adds Sourdough toast to favorites and reloads the page.",
+      "then": "The interface and the real favorites API both contain Sourdough toast exactly once. The backend stores the change in its configured data file."
+    },
+    {
+      "id": "FAV-002",
+      "description": "Removing a favorite updates the backend and survives reloading the page.",
+      "given": "Alice has Sourdough toast saved as a favorite.",
+      "when": "Alice removes Sourdough toast through the interface and reloads the page.",
+      "then": "Sourdough toast is absent from Alice's favorites in the interface and in the real favorites API."
+    },
+    {
+      "id": "FAV-003",
+      "description": "Repeated and concurrent additions are idempotent.",
+      "given": "Alice has no favorites.",
+      "when": "Three real API requests add Sourdough toast concurrently and another request adds it again.",
+      "then": "Every addition succeeds and Alice has exactly one Sourdough toast favorite in the API and interface."
+    },
+    {
+      "id": "FAV-004",
+      "description": "Favorites remain isolated between two explicitly simulated demo identities.",
+      "given": "Alice and Bob each have no favorites. The identity selector is a demo mechanism, not authentication.",
+      "when": "Alice adds Sourdough toast and Bob adds Green salad through the interface.",
+      "then": "Alice sees only Sourdough toast and Bob sees only Green salad in their respective interface views and real API responses. This proves demo data partitioning, not authorization security."
+    },
+    {
+      "id": "FAV-005",
+      "description": "Invalid mutations return an error without changing either identity's favorites.",
+      "given": "Alice has Sourdough toast and Bob has no favorites.",
+      "when": "Real API requests attempt to add an unknown item or mutate favorites with an unknown or missing demo identity.",
+      "then": "Each invalid request returns HTTP 400 and both identities' favorites remain unchanged."
+    }
+  ]
+}
