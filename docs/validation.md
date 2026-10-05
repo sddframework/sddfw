@@ -1,8 +1,7 @@
 # v0.1 validation record
 
-Recorded on 2026-10-05. These are local development checks for the source preview,
-not a production certification or an npm release. Pending gates remain pending
-until an actual execution confirms them.
+Recorded on 2026-10-05. These are executed development and publication checks
+for the source preview, not a production certification or an npm release.
 
 ## Completed local checks
 
@@ -54,11 +53,30 @@ The Claude Code adapter is implemented but has no live validation because the
 local CLI is unavailable. Windows adapter shim handling has unit coverage, with
 no live Windows workflow proof.
 
-## Remaining gates
+## Hosted and published checks
 
-- Ubuntu/Node.js 22 GitHub Actions after publication of the pull request.
+The [Ubuntu/Node.js 22 workflow](https://github.com/sddframework/sddfw/actions/runs/37375413250)
+passed on commit `19927b95c06550d078f74f60b1bc9da02883e323`, using Node.js
+22.23.3: source checks, all 40 core/evidence/backend/control tests, all five
+Chromium demo tests, both integration journeys, and package inspection.
+The packaged integration now gives each installation its own initially empty
+npm cache and permits registry access when required. Both the CLI tarball and
+demo dependencies therefore work without a prewarmed developer cache.
 
-The CI workflow is configured to run source checks, tests, the browser demo,
-packaged integration, and package inspection. Its configuration does not prove
-that those Linux checks passed. Update this record with actual results before
-describing an outstanding gate as complete.
+A separate clean clone from public `main` on Node.js 22.23.3 followed the actual
+install guide: `npm install`, `npm link` with an isolated global prefix,
+`sddfw init --demo --install`, approval, verification and report. All five
+criteria passed with fresh evidence. No AI account was used in this install
+check.
+
+The [GitHub Pages deployment](https://github.com/sddframework/website/actions/runs/37374956220)
+completed successfully. The HTML served at [sddfw.com](https://sddfw.com/)
+matched the production build byte for byte, with HTTP → HTTPS and `www` → apex
+redirects. Playwright checked light/dark layouts at 390 and 1440 pixels, all
+nine in-page links, mobile navigation, FAQ disclosure, sample correction and
+Markdown download; no overflow or JavaScript errors were observed.
+
+Documentation links now use each repository's `main` branch. After the three
+work branches were deleted, all 23 audited public URLs returned HTTP 200 and
+all three section fragments were valid. Relative documents, assets and
+cross-repository targets were checked against the integrated sources.
