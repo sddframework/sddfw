@@ -17,6 +17,7 @@ Playwright 1.63.0, and Chromium build 1243.
 | Fullstack browser/API demo | 5/5 Playwright tests passed against the real local backend and persistence. |
 | Deliberate product regression | Allowing duplicate favorites made `FAV-003` fail; the original implementation was preserved. |
 | Landing | Check and build passed. Light/dark layouts had no page overflow at 360, 390, 768, and 1440 pixels. Axe reported zero automated violations; decorative contrast was reviewed manually. |
+| Real acceptance HTML | The seven-criterion report was inspected at 390 and 1440 pixels without overflow. Status labels remain whole; Node.js version and unavailable Git context are explicit. Axe reported zero violations and zero incomplete checks; no page errors were observed. |
 
 The landing's interactive reservation report is illustrative. The fullstack
 demo results above came from executed checks. Website verification details are

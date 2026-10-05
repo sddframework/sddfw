@@ -112,10 +112,12 @@ test('local reports escape prose, redact known secret fields, and only link cont
     { name: 'Symlink', path: path.join(outputDir, 'escape.txt') },
     { name: 'Unsafe', path: path.join(outputDir, 'unsafe.html') },
     { name: 'Remote', path: 'javascript:alert(1).txt' },
-  ] }] })]), { spec: { title: '<img src=x onerror=bad()>', criteria: [{ id: 'FAV-001', description: 'Value | **bold** [link](javascript:bad) <script>bad()</script>' }] }, run: { id: 'run-1', command: ['TOKEN=never-in-summary'], environment: 'local', mockedServices: [] } });
+  ] }] })]), { spec: { title: '<img src=x onerror=bad()>', criteria: [{ id: 'FAV-001', description: 'Value | **bold** [link](javascript:bad) <script>bad()</script>' }] }, run: { id: 'run-1', command: ['TOKEN=never-in-summary'], environment: 'local', mockedServices: [], dirty: null, nodeVersion: process.version } });
   const files = await writeAcceptanceReports(report, outputDir);
   const [page, md, json] = await Promise.all([readFile(files.html, 'utf8'), readFile(files.markdown, 'utf8'), readFile(files.json, 'utf8')]);
   assert.match(page, /&lt;script&gt;/);
+  assert.match(page, /Git state unavailable/);
+  assert.ok(page.includes(process.version));
   assert.doesNotMatch(page, /<script>|onerror=bad\(\)>|hidden-value|never-in-summary/);
   assert.match(page, /href="\.\/trace.zip"/);
   assert.doesNotMatch(page, /href="[^\"]*(?:outside|escape|unsafe|javascript)/);
