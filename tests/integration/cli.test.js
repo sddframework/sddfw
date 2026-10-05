@@ -21,13 +21,14 @@ test('packaged CLI installs and verifies real UI/API, failing code, skipped cove
   const tool = path.join(root, 'tool'), project = path.join(root, 'project');
   await mkdir(tool); await mkdir(project);
   await writeFile(path.join(tool, 'package.json'), '{"private":true}');
-  const installed = run('npm', ['install', '--offline', tarball], tool);
+  // Each installation must work with its own empty cache, including on fresh CI.
+  const installed = run('npm', ['install', '--prefer-offline', '--cache', path.join(root, 'tool-cache'), tarball], tool);
   assert.equal(installed.status, 0, installed.stderr);
   const cli = path.join(tool, 'node_modules/@sddfw/cli/bin/sddfw.js');
   const invoke = (...args) => run(process.execPath, [cli, ...args], project, { SDDFW_DEMO_PORT: '4187' });
   const initialized = invoke('init', '--demo');
   assert.equal(initialized.status, 0, initialized.stdout + initialized.stderr);
-  const deps = run('npm', ['install', '--offline'], project);
+  const deps = run('npm', ['install', '--prefer-offline', '--cache', path.join(root, 'demo-cache')], project);
   assert.equal(deps.status, 0, deps.stderr);
   assert.equal(invoke('verify', 'favorites').status, 2, 'Unreviewed specification must be rejected.');
   assert.equal(invoke('approve', 'favorites').status, 0);
